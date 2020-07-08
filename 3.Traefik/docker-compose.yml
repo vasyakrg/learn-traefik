@@ -1,0 +1,39 @@
+version: '3.7'
+services:
+  traefik:
+    image: traefik
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/traefik.yml:/traefik.yml:ro
+      - ./data/custom/:/custom/:ro
+      - ./data/acme.json:/acme.json
+      - ./data/logs/:/var/log/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=webproxy"
+      # - "traefik.http.routers.traefik-http.entrypoints=http"
+      # - "traefik.http.routers.traefik-http.rule=Host(`traefik.tfm.zone`)"
+      # - "traefik.http.routers.traefik-http.middlewares=traefik-redirectscheme,traefik-auth"
+
+      - "traefik.http.routers.traefik.entrypoints=https"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.tfm.zone`)" # change URL !
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=letsEncrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.services.traefik-traefik.loadbalancer.server.port=888" # not understand why :)
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$2y$$05$$7GBmuRxTR0T3IZ5rQO4iB.cj2p23RjIIkLB/l5bPn3gzkpfVahvKO" # admin \ admin in "echo $(htpasswd -nbB admin admin) | sed -e s/\\$/\\$\\$/g"
+      - "traefik.http.middlewares.traefik-redirectscheme.redirectscheme.scheme=https"
+    networks:
+      - webproxy
+
+networks:
+  webproxy:
+    name: webproxy

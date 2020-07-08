@@ -1,0 +1,46 @@
+http:
+  routers:
+    external-docker-route:
+      entryPoints:
+      - https
+      service: test2
+      middlewares:
+      - test2-auth
+      - test-retry
+      # - test2-whitelist
+      # - testHeader
+      rule: Host(`test2.tfm.zone`) # "Host(`example.com`) || (Host(`example.org`) && Path(`/traefik`))"
+      tls:
+        certResolver: letsEncrypt
+# middlewares
+  middlewares:
+    test2-auth:
+      basicAuth:
+        users:
+        - "admin:$2y$05$Ixy4UWIEe7z5/xyhMEerveBs7bOWQVUCJAIL.55ANTzlLJWHnaqJ6" # not escaped $$ !
+    test2-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - "127.0.0.1/32"
+          - "8.8.8.8/32"
+    test-retry:
+      retry:
+       attempts: 4
+    testHeader:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+        accessControlAllowOriginList:
+          - https://foo.bar.org
+          - https://example.org
+        accessControlMaxAge: 100
+        addVaryHeader: true
+# Services
+  services:
+    test2:
+      loadBalancer:
+        servers:
+        - url: http://95.216.205.111:8080
+        passHostHeader: true

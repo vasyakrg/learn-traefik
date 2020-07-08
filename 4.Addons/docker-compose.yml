@@ -1,0 +1,68 @@
+version: '3.7'
+services:
+    grafana:
+      container_name: ${APP_NAME}-grafana
+      image: grafana/grafana:latest
+      restart: always
+      environment:
+        - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+        - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+        - GF_AUTH_ANONYMOUS_ENABLED=false
+        - GF_USERS_ALLOW_SIGN_UP=false
+        - GF_USERS_ALLOW_ORG_CREATE=false
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=webproxy"
+        - "traefik.http.routers.grafana.entrypoints=https"
+        - "traefik.http.routers.grafana.rule=Host(`grafana.tfm.zone`)" # change URL !
+        - "traefik.http.routers.grafana.tls=true"
+        - "traefik.http.routers.grafana.tls.certresolver=letsEncrypt"
+        - "traefik.http.routers.grafana.service=grafana-service"
+        - "traefik.http.services.grafana-service.loadbalancer.server.port=3000"
+      volumes:
+        - grafana:/var/lib/grafana/
+      expose:
+        - 3000
+      networks:
+        - monitor_net
+        - webproxy
+
+    prometheus:
+      container_name: ${APP_NAME}-prometheus
+      image: prom/prometheus
+      restart: always
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=webproxy"
+        - "traefik.http.routers.prometheus.entrypoints=https"
+        - "traefik.http.routers.prometheus.rule=Host(`prom.tfm.zone`)" # change URL !
+        - "traefik.http.routers.prometheus.tls=true"
+        - "traefik.http.routers.prometheus.tls.certresolver=letsEncrypt"
+        - "traefik.http.routers.prometheus.service=prometheus-service"
+        - "traefik.http.routers.prometheus.middlewares=prometheus-auth"
+        - "traefik.http.services.prometheus-service.loadbalancer.server.port=9090"
+        - "traefik.http.middlewares.prometheus-auth.basicauth.users=admin:$$2y$$05$$7GBmuRxTR0T3IZ5rQO4iB.cj2p23RjIIkLB/l5bPn3gzkpfVahvKO" # admin \ admin in "echo $(htpasswd -nbB admin admin) | sed -e s/\\$/\\$\\$/g"
+      volumes:
+        - ./prometheus/:/etc/prometheus/
+        - prometheus_data:/prometheus
+      expose:
+        - 9090
+      networks:
+        - monitor_net
+        - webproxy
+
+volumes:
+  prometheus_data:
+  grafana:
+
+networks:
+  webproxy:
+    external:
+      name: webproxy
+  monitor_net:
+    name: monitor_net

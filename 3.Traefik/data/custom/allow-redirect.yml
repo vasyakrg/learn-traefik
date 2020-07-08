@@ -1,0 +1,19 @@
+http:
+  routers:
+    redirs:
+      rule: hostregexp(`{host:.+}`)
+      entrypoints:
+      - http
+      middlewares:
+      - redirect-to-https
+      service: noop
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: false
+  services:
+    noop:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1"

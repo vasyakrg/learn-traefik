@@ -1,0 +1,65 @@
+global:
+  checkNewVersion: true
+
+log:
+  filePath: /var/log/log.log
+  format: common # or json
+  level: "DEBUG" # DEBUG, PANIC, FATAL, ERROR, WARN, or INFO
+
+accessLog:
+  filePath: /var/log/access.log
+  format: common # or json
+  bufferingSize: 100
+  filters:
+    statusCodes:
+      - "200"
+      - "300-302"
+      - "500-503"
+    retryAttempts: true
+    minDuration: "10ms"
+
+api:
+  dashboard: true
+
+entryPoints:
+  http:
+    address: ":80"
+  https:
+    address: ":443"
+  metrics:
+    address: ":8082"
+
+metrics:
+  prometheus: # datadog, statsD, influxDB
+    entryPoint: metrics
+
+http:
+  routers:
+    redirs-docker:
+      rule: hostregexp(`{host:.+}`)
+      entrypoints:
+      - http
+      middlewares:
+      - redirect-docker-to-https
+  middlewares:
+    redirect-docker-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: false
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    directory: /custom
+    watch: true
+
+certificatesResolvers:
+  letsEncrypt:
+    acme:
+      email: info@tfm.zone # Change e-mail !
+      storage: acme.json
+      #caServer: "https://acme-staging-v02.api.letsencrypt.org/directory" # for tests only
+      httpChallenge:
+        entryPoint: http

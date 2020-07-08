@@ -1,0 +1,5 @@
+- targets:
+   - traefik:8082
+  labels:
+    env: test
+    job: traefik-exporter
